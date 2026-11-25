@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import androidx.annotation.NonNull;
@@ -45,6 +46,7 @@ import androidx.media3.extractor.ts.TsExtractor;
 import androidx.media3.ui.AspectRatioFrameLayout;
 import androidx.media3.ui.CaptionStyleCompat;
 import androidx.media3.ui.PlayerView;
+import androidx.media3.ui.SubtitleView;
 
 import org.jellyfin.androidtv.R;
 import org.jellyfin.androidtv.data.compat.StreamInfo;
@@ -82,6 +84,7 @@ public class VideoManager {
     private PlaybackOverlayFragmentHelper _helper;
     public ExoPlayer mExoPlayer;
     private PlayerView mExoPlayerView;
+    private final SecondarySubtitles mSecondarySubtitles;
     private Handler mHandler = new Handler();
 
     private long mMetaDuration = -1;
@@ -129,9 +132,18 @@ public class VideoManager {
                 strokeColor,
                 TypefaceCompat.create(activity, Typeface.DEFAULT, textWeight, false)
         );
-        mExoPlayerView.getSubtitleView().setFixedTextSize(TypedValue.COMPLEX_UNIT_DIP, userPreferences.get(UserPreferences.Companion.getSubtitlesTextSize()));
+        float subtitleTextSize = userPreferences.get(UserPreferences.Companion.getSubtitlesTextSize());
+        mExoPlayerView.getSubtitleView().setFixedTextSize(TypedValue.COMPLEX_UNIT_DIP, subtitleTextSize);
         mExoPlayerView.getSubtitleView().setBottomPaddingFraction(userPreferences.get(UserPreferences.Companion.getSubtitlesOffsetPosition()));
         mExoPlayerView.getSubtitleView().setStyle(subtitleStyle);
+
+        // Same frame as the primary subtitles so the secondary line stays on the picture
+        SubtitleView secondarySubtitleView = new SubtitleView(activity);
+        secondarySubtitleView.setFixedTextSize(TypedValue.COMPLEX_UNIT_DIP, subtitleTextSize);
+        secondarySubtitleView.setStyle(subtitleStyle);
+        ((ViewGroup) mExoPlayerView.getSubtitleView().getParent()).addView(secondarySubtitleView,
+                new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        mSecondarySubtitles = new SecondarySubtitles(mExoPlayer, secondarySubtitleView, KoinJavaComponent.get(ApiClient.class), helper.getFragment());
 
         if (assHandler != null) {
             assHandler.init(mExoPlayer);
@@ -600,8 +612,14 @@ public class VideoManager {
         mExoPlayer.setPlaybackParameters(new PlaybackParameters(speed));
     }
 
+    @NonNull
+    public SecondarySubtitles getSecondarySubtitles() {
+        return mSecondarySubtitles;
+    }
+
     public void destroy() {
         mPlaybackControllerNotifiable = null;
+        mSecondarySubtitles.release();
         stopPlayback();
         releasePlayer();
     }

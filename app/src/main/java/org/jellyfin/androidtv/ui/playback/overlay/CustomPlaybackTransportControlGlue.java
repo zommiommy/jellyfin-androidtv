@@ -38,6 +38,7 @@ import org.jellyfin.androidtv.ui.playback.overlay.action.PlaybackSpeedAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.PreviousLiveTvChannelAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.RecordAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.RewindAction;
+import org.jellyfin.androidtv.ui.playback.overlay.action.SecondarySubtitlesAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.SelectAudioAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.SelectQualityAction;
 import org.jellyfin.androidtv.ui.playback.overlay.action.ServerUpscalingAction;
@@ -60,6 +61,7 @@ public class CustomPlaybackTransportControlGlue extends PlaybackTransportControl
     private SkipNextAction skipNextAction;
     private SelectAudioAction selectAudioAction;
     private ClosedCaptionsAction closedCaptionsAction;
+    private SecondarySubtitlesAction secondarySubtitlesAction;
     private SelectQualityAction selectQualityAction;
     private ServerUpscalingAction serverUpscalingAction;
     private PlaybackSpeedAction playbackSpeedAction;
@@ -112,6 +114,7 @@ public class CustomPlaybackTransportControlGlue extends PlaybackTransportControl
         mHandler.removeCallbacks(mRefreshViewVisibility);
 
         closedCaptionsAction.removePopup();
+        secondarySubtitlesAction.dismissPopup();
         playbackSpeedAction.dismissPopup();
         selectAudioAction.dismissPopup();
         selectQualityAction.dismissPopup();
@@ -199,6 +202,8 @@ public class CustomPlaybackTransportControlGlue extends PlaybackTransportControl
         selectAudioAction.setLabels(new String[]{context.getString(R.string.lbl_audio_track)});
         closedCaptionsAction = new ClosedCaptionsAction(context, this);
         closedCaptionsAction.setLabels(new String[]{context.getString(R.string.lbl_subtitle_track)});
+        secondarySubtitlesAction = new SecondarySubtitlesAction(context, this);
+        secondarySubtitlesAction.setLabels(new String[]{context.getString(R.string.lbl_secondary_subtitle_track)});
         selectQualityAction = new SelectQualityAction(context, this, KoinJavaComponent.get(UserPreferences.class));
         selectQualityAction.setLabels(new String[]{context.getString(R.string.lbl_quality_profile)});
         serverUpscalingAction = new ServerUpscalingAction(context, this, KoinJavaComponent.get(UserPreferences.class));
@@ -250,6 +255,10 @@ public class CustomPlaybackTransportControlGlue extends PlaybackTransportControl
 
         if (playerAdapter.hasSubs()) {
             primaryActionsAdapter.add(closedCaptionsAction);
+        }
+
+        if (playerAdapter.hasSecondarySubs()) {
+            primaryActionsAdapter.add(secondarySubtitlesAction);
         }
 
         if (playerAdapter.hasMultiAudio()) {

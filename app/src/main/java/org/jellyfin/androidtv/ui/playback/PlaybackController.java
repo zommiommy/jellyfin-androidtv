@@ -192,6 +192,11 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         return mVideoManager != null && mVideoManager.isInitialized();
     }
 
+    @Nullable
+    public SecondarySubtitles getSecondarySubtitles() {
+        return hasInitializedVideoManager() ? mVideoManager.getSecondarySubtitles() : null;
+    }
+
     public MediaSourceInfo getCurrentMediaSource() {
         if (mCurrentStreamInfo != null && mCurrentStreamInfo.getMediaSource() != null) {
             return mCurrentStreamInfo.getMediaSource();
@@ -689,6 +694,7 @@ public class PlaybackController implements PlaybackControllerNotifiable {
 
         if (mVideoManager != null) {
             mVideoManager.setMediaStreamInfo(api.getValue(), response);
+            mVideoManager.getSecondarySubtitles().restore(item.getId(), response.getMediaSource());
         }
 
         PlaybackControllerHelperKt.applyMediaSegments(this, item, () -> {
