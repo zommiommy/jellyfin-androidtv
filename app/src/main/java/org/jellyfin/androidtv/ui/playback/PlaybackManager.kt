@@ -5,6 +5,9 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import org.jellyfin.androidtv.data.compat.PlaybackException
 import org.jellyfin.androidtv.data.compat.StreamInfo
 import org.jellyfin.androidtv.data.compat.VideoOptions
@@ -12,10 +15,13 @@ import org.jellyfin.androidtv.util.apiclient.Response
 import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.extensions.hlsSegmentApi
 import org.jellyfin.sdk.api.client.extensions.mediaInfoApi
+import org.jellyfin.sdk.api.client.extensions.post
 import org.jellyfin.sdk.api.client.extensions.videosApi
+import org.jellyfin.sdk.api.client.util.ApiSerializer
 import org.jellyfin.sdk.model.api.PlayMethod
 import org.jellyfin.sdk.model.api.PlaybackInfoDto
 import org.jellyfin.sdk.model.api.PlaybackInfoResponse
+import java.util.UUID
 
 private fun createStreamInfo(
 	api: ApiClient,
@@ -96,24 +102,23 @@ class PlaybackManager(
 		options: VideoOptions,
 		startTimeTicks: Long
 	) = runCatching {
+		val itemId = requireNotNull(options.itemId) { "Item id cannot be null" }
+		val data = PlaybackInfoDto(
+			mediaSourceId = options.mediaSourceId,
+			startTimeTicks = startTimeTicks,
+			deviceProfile = options.profile,
+			enableDirectStream = options.enableDirectStream,
+			enableDirectPlay = options.enableDirectPlay,
+			maxAudioChannels = options.maxAudioChannels,
+			audioStreamIndex = options.audioStreamIndex.takeIf { it != null && it >= 0 },
+			subtitleStreamIndex = options.subtitleStreamIndex,
+			allowVideoStreamCopy = true,
+			allowAudioStreamCopy = true,
+			autoOpenLiveStream = true,
+			alwaysBurnInSubtitleWhenTranscoding = options.alwaysBurnInSubtitleWhenTranscoding,
+		)
 		val response = withContext(Dispatchers.IO) {
-			api.mediaInfoApi.getPostedPlaybackInfo(
-				itemId = requireNotNull(options.itemId) { "Item id cannot be null" },
-				data = PlaybackInfoDto(
-					mediaSourceId = options.mediaSourceId,
-					startTimeTicks = startTimeTicks,
-					deviceProfile = options.profile,
-					enableDirectStream = options.enableDirectStream,
-					enableDirectPlay = options.enableDirectPlay,
-					maxAudioChannels = options.maxAudioChannels,
-					audioStreamIndex = options.audioStreamIndex.takeIf { it != null && it >= 0 },
-					subtitleStreamIndex = options.subtitleStreamIndex,
-					allowVideoStreamCopy = true,
-					allowAudioStreamCopy = true,
-					autoOpenLiveStream = true,
-					alwaysBurnInSubtitleWhenTranscoding = options.alwaysBurnInSubtitleWhenTranscoding,
-				)
-			).content
+			getPostedPlaybackInfo(itemId, data, options)
 		}
 
 		if (response.errorCode != null) {
@@ -123,5 +128,32 @@ class PlaybackManager(
 		}
 
 		createStreamInfo(api, options, response)
+	}
+
+	/**
+	 * The SDK's [PlaybackInfoDto] lacks the server's upscaling fields, so an upscaling request posts the
+	 * same body as JSON with those fields added.
+	 */
+	private suspend fun getPostedPlaybackInfo(
+		itemId: UUID,
+		data: PlaybackInfoDto,
+		options: VideoOptions,
+	): PlaybackInfoResponse {
+		val upscalingMode = options.videoUpscalingMode.serverValue
+			?: return api.mediaInfoApi.getPostedPlaybackInfo(itemId, data).content
+
+		val body = buildJsonObject {
+			ApiSerializer.json.encodeToJsonElement(PlaybackInfoDto.serializer(), data).jsonObject
+				.forEach { (key, value) -> put(key, value) }
+			put("VideoUpscalingMode", upscalingMode)
+			put("VideoUpscalingWidth", options.videoUpscalingWidth)
+			put("VideoUpscalingHeight", options.videoUpscalingHeight)
+		}
+
+		return api.post<PlaybackInfoResponse>(
+			"/Items/{itemId}/PlaybackInfo",
+			pathParameters = mapOf("itemId" to itemId),
+			requestBody = body,
+		).content
 	}
 }

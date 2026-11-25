@@ -192,6 +192,11 @@ public class PlaybackController implements PlaybackControllerNotifiable {
         return mVideoManager != null && mVideoManager.isInitialized();
     }
 
+    @Nullable
+    public SecondarySubtitles getSecondarySubtitles() {
+        return hasInitializedVideoManager() ? mVideoManager.getSecondarySubtitles() : null;
+    }
+
     public MediaSourceInfo getCurrentMediaSource() {
         if (mCurrentStreamInfo != null && mCurrentStreamInfo.getMediaSource() != null) {
             return mCurrentStreamInfo.getMediaSource();
@@ -548,6 +553,7 @@ public class PlaybackController implements PlaybackControllerNotifiable {
                 get(ServerVersion.class)
         );
         internalOptions.setProfile(internalProfile);
+        if (!isLiveTv) ServerUpscalingKt.applyVideoUpscaling(this, internalOptions);
         return internalOptions;
     }
 
@@ -690,6 +696,7 @@ public class PlaybackController implements PlaybackControllerNotifiable {
 
         if (mVideoManager != null) {
             mVideoManager.setMediaStreamInfo(api.getValue(), response);
+            mVideoManager.getSecondarySubtitles().restore(item.getId(), response.getMediaSource());
         }
 
         PlaybackControllerHelperKt.applyMediaSegments(this, item, () -> {
@@ -1275,6 +1282,8 @@ public class PlaybackController implements PlaybackControllerNotifiable {
             playerErrorEncountered();
             return;
         }
+
+        if (!isLiveTv && ServerUpscalingKt.disableFailedVideoUpscaling(this)) return;
 
         if (isLiveTv && directStreamLiveTv) {
             Utils.showToast(mFragment.getContext(), mFragment.getString(R.string.msg_error_live_stream));

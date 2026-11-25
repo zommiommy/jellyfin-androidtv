@@ -6,6 +6,7 @@ import androidx.leanback.media.PlayerAdapter;
 import org.jellyfin.androidtv.auth.repository.UserRepository;
 import org.jellyfin.androidtv.ui.playback.CustomPlaybackOverlayFragment;
 import org.jellyfin.androidtv.ui.playback.PlaybackController;
+import org.jellyfin.androidtv.ui.playback.SecondarySubtitlesKt;
 import org.jellyfin.androidtv.util.Utils;
 import org.jellyfin.androidtv.util.apiclient.StreamHelper;
 import org.jellyfin.sdk.model.api.ChapterInfo;
@@ -102,6 +103,10 @@ public class VideoPlayerAdapter extends PlayerAdapter {
 
     public boolean hasSubs() {
         return StreamHelper.getSubtitleStreams(playbackController.getCurrentMediaSource()).size() > 0;
+    }
+
+    public boolean hasSecondarySubs() {
+        return !SecondarySubtitlesKt.secondarySubtitleStreams(playbackController.getCurrentMediaSource()).isEmpty();
     }
 
     public boolean hasMultiAudio() {
