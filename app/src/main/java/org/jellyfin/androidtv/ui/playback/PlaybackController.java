@@ -548,6 +548,7 @@ public class PlaybackController implements PlaybackControllerNotifiable {
                 get(ServerVersion.class)
         );
         internalOptions.setProfile(internalProfile);
+        if (!isLiveTv) ServerUpscalingKt.applyVideoUpscaling(this, internalOptions);
         return internalOptions;
     }
 
@@ -1273,6 +1274,8 @@ public class PlaybackController implements PlaybackControllerNotifiable {
             playerErrorEncountered();
             return;
         }
+
+        if (!isLiveTv && ServerUpscalingKt.disableFailedVideoUpscaling(this)) return;
 
         if (isLiveTv && directStreamLiveTv) {
             Utils.showToast(mFragment.getContext(), mFragment.getString(R.string.msg_error_live_stream));

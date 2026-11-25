@@ -15,6 +15,7 @@ import org.jellyfin.androidtv.preference.constant.HdrOverrideMode
 import org.jellyfin.androidtv.preference.constant.NextUpBehavior
 import org.jellyfin.androidtv.preference.constant.RefreshRateSwitchingBehavior
 import org.jellyfin.androidtv.preference.constant.StillWatchingBehavior
+import org.jellyfin.androidtv.preference.constant.VideoUpscalingMode
 import org.jellyfin.androidtv.preference.constant.WatchedIndicatorBehavior
 import org.jellyfin.androidtv.preference.constant.ZoomMode
 import org.jellyfin.androidtv.ui.playback.segment.MediaSegmentAction
@@ -287,6 +288,11 @@ class UserPreferences(context: Context) : SharedPreferenceStore(
 		 * Preferred behavior for player aspect ratio (zoom mode).
 		 */
 		var playerZoomMode = enumPreference("player_zoom_mode", ZoomMode.FIT)
+
+		/**
+		 * Server-side video upscaling requested when starting a video stream.
+		 */
+		var videoUpscalingMode = enumPreference("pref_video_upscaling_mode", VideoUpscalingMode.NONE)
 
 		/**
 		 * Enable libass.
